@@ -164,7 +164,7 @@ async fn main() {
         // Tower ServiceBuilderを使用してミドルウェアを追加 (例: ロギング)
         .layer(ServiceBuilder::new().layer(tower_http::trace::TraceLayer::new_for_http()));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
     tracing::debug!("listening on {}", addr);
 
     // サーバーを起動
