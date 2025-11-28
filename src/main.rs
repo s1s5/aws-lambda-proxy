@@ -9,6 +9,8 @@ use base64::engine::general_purpose;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::{collections::HashMap, env, net::SocketAddr};
+use tokio::signal;
+use tokio::signal::unix::{SignalKind, signal};
 use tower::ServiceBuilder;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -169,5 +171,41 @@ async fn main() {
 
     // サーバーを起動
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal()) // ここでシャットダウンシグナルを渡す
+        .await
+        .unwrap();
+
+    // グレースフルシャットダウンが完了すると、この下のコードが実行される
+    println!("Server has shut down.");
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)] // Linux/macOSなどのUnix系OSでSIGTERMを処理
+    let terminate = async {
+        signal(SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))] // Unix系OS以外では何もしない
+    let terminate = std::future::pending::<()>();
+
+    // `ctrl_c`または`terminate`のどちらかが先に完了するのを待つ
+    tokio::select! {
+        _ = ctrl_c => {
+            eprintln!("SIGINT (Ctrl+C) received. Starting graceful shutdown...");
+        },
+        _ = terminate => {
+            eprintln!("SIGTERM received. Starting graceful shutdown...");
+        },
+    }
 }

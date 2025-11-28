@@ -7,7 +7,7 @@ RUN groupadd -g 999 app && \
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 
-RUN --mount=type=cache,id=aws-lambda-proxy,target=/rust/target \
+RUN --mount=type=cache,id=aws-lambda-proxy,target=/volume/target \
     --mount=type=cache,target=/opt/cargo/registry \
     --mount=type=cache,target=/opt/cargo/git \
     cargo build --release --bin aws-lambda-proxy && \
